@@ -788,10 +788,10 @@
 
 <!-- ===== TAB NAV ===== -->
 <nav class="tab-nav">
-  <button class="tab-btn" onclick="switchTab('match')">
+  <button class="tab-btn active" onclick="switchTab('match')">
     <span class="icon">📋</span>試合記録
   </button>
-  <button class="tab-btn active" onclick="switchTab('lifting')">
+  <button class="tab-btn" onclick="switchTab('lifting')">
     <span class="icon">⚽</span>リフティング
   </button>
   <button class="tab-btn" onclick="switchTab('timer')">
@@ -806,7 +806,7 @@
 </nav>
 
 <!-- ===== PAGE 1: LIFTING ===== -->
-<div class="page active" id="page-lifting">
+<div class="page" id="page-lifting">
   <div class="page-header" style="background:linear-gradient(135deg,#00a651,#007a3d)">
     <h1>⚽ リフティングカウンター</h1>
     <p>タップしてカウント！記録を更新しよう</p>
@@ -867,7 +867,7 @@
 </div>
 
 <!-- ===== PAGE 2: MATCH ===== -->
-<div class="page" id="page-match">
+<div class="page active" id="page-match">
   <div class="page-header" style="background:linear-gradient(135deg,#0057ff,#003db5)">
     <h1>📋 試合記録</h1>
     <p>スコアと感想を残そう</p>
