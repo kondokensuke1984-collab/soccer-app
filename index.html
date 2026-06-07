@@ -1331,13 +1331,15 @@ function tapCounter() {
 function resetCounter() {
   count = 0;
   document.getElementById('counter-num').textContent = 0;
-  document.getElementById('lift-video').value = '';
+  const liftVideoEl = document.getElementById('lift-video');
+  if (liftVideoEl) liftVideoEl.value = '';
 }
 function saveLifting() {
   if (count === 0) return;
   const records = JSON.parse(localStorage.getItem('lifting') || '[]');
   const dateStr = new Date().toISOString().split('T')[0];
-  const video   = document.getElementById('lift-video').value.trim();
+  const videoEl = document.getElementById('lift-video');
+  const video   = videoEl ? videoEl.value.trim() : '';
   records.push({ count, date: dateStr, video: video || '', id: Date.now() });
   if (records.length > 200) records.shift();
   localStorage.setItem('lifting', JSON.stringify(records));
