@@ -1,0 +1,4 @@
+{
+  "buildCommand": "sed -i 's|__GH_SYNC_TOKEN__|'\"$GH_SYNC_TOKEN\"'|g' index.html",
+  "outputDirectory": "."
+}
