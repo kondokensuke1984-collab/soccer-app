@@ -18,6 +18,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore data.json
+        run: |
+          CONTENT=$(curl -s -H "Authorization: Bearer ${{ secrets.SOCCER }}" \
+            "https://api.github.com/repos/kondokensuke1984-collab/soccer-app/contents/data.json" \
+            | python3 -c "import sys,json,base64; d=json.load(sys.stdin); print(base64.b64decode(d['content']).decode())" 2>/dev/null)
+          if [ -z "$CONTENT" ]; then
+            echo '{"matches":[],"lifting":[],"deleted":[]}' > data.json
+          else
+            echo "$CONTENT" > data.json
+          fi
+
       - name: Inject token
         run: sed -i "s|__GH_SYNC_TOKEN__|${{ secrets.SOCCER }}|g" index.html
 
