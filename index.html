@@ -320,6 +320,10 @@
       letter-spacing: 0.03em;
     }
     .day-note-section { margin-top: 10px; }
+    .btn-note-toggle {
+      background: none; border: none; color: var(--muted); font-size: 0.82rem;
+      cursor: pointer; padding: 4px 0; text-decoration: underline;
+    }
     .btn-note-upload {
       width:100%; padding:10px; border-radius:10px; border:2px dashed #ccc;
       background:#fafafa; color:#555; font-size:0.9rem; cursor:pointer;
@@ -1783,9 +1787,12 @@ function renderMatchList() {
     const noteSection = `<div class="day-note-section">
       <input type="file" accept="image/*" id="note-input-${date}" style="display:none" onchange="saveDayNote(this,'${date}')">
       ${note
-        ? `<img src="${note}" style="width:100%;border-radius:8px;cursor:pointer;margin-bottom:6px" onclick="openNoteViewer('${date}')" alt="反省ノート">
-           <button class="btn-note-upload" style="font-size:12px;padding:6px" onclick="document.getElementById('note-input-${date}').click()">📷 写真を変更</button>`
-        : `<button class="btn-note-upload" onclick="document.getElementById('note-input-${date}').click()">📓 反省ノートを追加（カメラ / ライブラリ）</button>`
+        ? `<button class="btn-note-toggle" onclick="toggleDayNote('${date}',this)">📓 反省ノートを見る</button>
+           <div id="day-note-${date}" style="display:none;margin-top:8px">
+             <img src="${note}" style="width:100%;border-radius:8px;cursor:pointer;margin-bottom:6px" onclick="openNoteViewer('${date}')" alt="反省ノート">
+             <button class="btn-note-upload" style="font-size:12px;padding:6px" onclick="document.getElementById('note-input-${date}').click()">📷 写真を変更</button>
+           </div>`
+        : `<button class="btn-note-upload" onclick="document.getElementById('note-input-${date}').click()">📓 反省ノートを追加</button>`
       }
     </div>`;
 
@@ -1795,6 +1802,13 @@ function renderMatchList() {
       ${noteSection}
     </div>`;
   }).join('');
+}
+
+function toggleDayNote(date, btn) {
+  const el = document.getElementById('day-note-' + date);
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '📓 反省ノートを閉じる' : '📓 反省ノートを見る';
 }
 
 function saveDayNote(input, date) {
