@@ -313,6 +313,16 @@
     .match-score { font-size: 1.1rem; font-weight: 700; }
     .match-meta  { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
     .match-players { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .player-select-grid {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+    }
+    .player-btn {
+      padding: 5px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600;
+      border: 2px solid #ddd; background: #f5f5f5; color: #555;
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .player-btn.selected-goal   { border-color: var(--blue);  background: rgba(0,87,255,0.12); color: var(--blue); }
+    .player-btn.selected-assist { border-color: var(--green); background: rgba(0,166,81,0.12); color: var(--green); }
     .player-tag {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 9px; border-radius: 50px;
@@ -892,12 +902,14 @@
         </div>
       </div>
       <div class="form-row">
-        <label class="form-label">⚽ ゴール（名前をカンマ区切り）</label>
-        <input type="text" class="form-input" id="match-goals" placeholder="例：勇誠, 太郎" />
+        <label class="form-label">⚽ ゴール &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">タップで選択</span></label>
+        <div class="player-select-grid" id="goal-selector"></div>
+        <input type="hidden" id="match-goals" />
       </div>
       <div class="form-row">
-        <label class="form-label">🎯 アシスト（名前をカンマ区切り）</label>
-        <input type="text" class="form-input" id="match-assists" placeholder="例：勇誠, 次郎" />
+        <label class="form-label">🎯 アシスト &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">タップで選択</span></label>
+        <div class="player-select-grid" id="assist-selector"></div>
+        <input type="hidden" id="match-assists" />
       </div>
       <div class="form-row">
         <label class="form-label">🎬 動画（YouTube / Googleフォト）</label>
@@ -957,12 +969,14 @@
       </div>
     </div>
     <div class="form-row">
-      <label class="form-label">⚽ ゴール</label>
-      <input type="text" class="form-input" id="edit-goals" placeholder="例：勇誠, 太郎" />
+      <label class="form-label">⚽ ゴール &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">タップで選択</span></label>
+      <div class="player-select-grid" id="edit-goal-selector"></div>
+      <input type="hidden" id="edit-goals" />
     </div>
     <div class="form-row">
-      <label class="form-label">🎯 アシスト</label>
-      <input type="text" class="form-input" id="edit-assists" placeholder="例：勇誠, 次郎" />
+      <label class="form-label">🎯 アシスト &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">タップで選択</span></label>
+      <div class="player-select-grid" id="edit-assist-selector"></div>
+      <input type="hidden" id="edit-assists" />
     </div>
     <div class="form-row">
       <label class="form-label">🎬 動画（YouTube / Googleフォト）</label>
@@ -1476,6 +1490,45 @@ renderLiftList();
 // ========== 2. MATCH RECORD ==========
 document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
 
+var PLAYERS = ['たすく','とあ','げん','としひろ','勇誠','ゆう','がく','おう','あやと','はると','たくと','ごろう','こうき','かずま','こうせい','あさひ','ゆうや','しょうたろう'];
+
+function initPlayerSelector(gridId, hiddenId, type) {
+  var grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = PLAYERS.map(name =>
+    `<button type="button" class="player-btn" data-name="${name}" data-type="${type}" onclick="togglePlayer(this,'${hiddenId}','${type}')">${name}</button>`
+  ).join('');
+}
+
+function togglePlayer(btn, hiddenId, type) {
+  var cls = 'selected-' + type;
+  btn.classList.toggle(cls);
+  updateHidden(btn.closest('.form-row'), hiddenId, type);
+}
+
+function updateHidden(formRow, hiddenId, type) {
+  var cls = 'selected-' + type;
+  var selected = [];
+  formRow.querySelectorAll('.player-btn.' + cls).forEach(b => selected.push(b.dataset.name));
+  document.getElementById(hiddenId).value = selected.join(',');
+}
+
+function setPlayerSelector(gridId, hiddenId, type, names) {
+  var grid = document.getElementById(gridId);
+  if (!grid) return;
+  var cls = 'selected-' + type;
+  grid.querySelectorAll('.player-btn').forEach(btn => {
+    btn.classList.toggle(cls, names.includes(btn.dataset.name));
+  });
+  document.getElementById(hiddenId).value = names.join(',');
+}
+
+function resetPlayerSelector(gridId, type) {
+  var grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('selected-' + type));
+}
+
 function parseNames(str) {
   return str.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
 }
@@ -1500,6 +1553,8 @@ function saveMatch() {
   document.getElementById('match-memo').value     = '';
   document.getElementById('match-score-us').value   = 0;
   document.getElementById('match-score-them').value = 0;
+  resetPlayerSelector('goal-selector',   'goal');
+  resetPlayerSelector('assist-selector', 'assist');
   renderMatchList();
   renderGoalRanking();
   pushToCloud();
@@ -1525,8 +1580,8 @@ function openEditModal(id) {
   document.getElementById('edit-opponent').value    = m.opponent;
   document.getElementById('edit-score-us').value    = m.us;
   document.getElementById('edit-score-them').value  = m.them;
-  document.getElementById('edit-goals').value       = (m.goals   || []).join('、');
-  document.getElementById('edit-assists').value     = (m.assists || []).join('、');
+  setPlayerSelector('edit-goal-selector',   'edit-goals',   'goal',   m.goals   || []);
+  setPlayerSelector('edit-assist-selector', 'edit-assists', 'assist', m.assists || []);
   document.getElementById('edit-video').value       = m.video || '';
   document.getElementById('edit-memo').value        = m.memo || '';
   document.getElementById('edit-modal').classList.add('open');
@@ -1633,6 +1688,10 @@ function renderMatchList() {
     </div>`;
   }).join('');
 }
+initPlayerSelector('goal-selector',   'match-goals',   'goal');
+initPlayerSelector('assist-selector', 'match-assists', 'assist');
+initPlayerSelector('edit-goal-selector',   'edit-goals',   'goal');
+initPlayerSelector('edit-assist-selector', 'edit-assists', 'assist');
 renderMatchList();
 renderGoalRanking();
 startSyncPolling();
