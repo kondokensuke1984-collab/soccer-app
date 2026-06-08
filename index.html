@@ -913,6 +913,20 @@
       <button class="btn-primary" onclick="saveMatch()">✅ 記録する</button>
     </div>
 
+    <div class="card" id="ranking-card" style="display:none">
+      <div class="card-title">🏆 ランキング</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px">
+          <div style="font-weight:600;margin-bottom:8px;font-size:14px">⚽ ゴール</div>
+          <div id="goal-ranking"></div>
+        </div>
+        <div style="flex:1;min-width:140px">
+          <div style="font-weight:600;margin-bottom:8px;font-size:14px">🎯 アシスト</div>
+          <div id="assist-ranking"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">🏆 試合一覧</div>
       <div id="match-list"><div class="empty-state">まだ記録がありません</div></div>
@@ -1254,7 +1268,7 @@ function syncFromCloud() {
   fetchCloud().then(function(cloud) {
     if (!cloud) { showSyncBadge('?'); return; }
     var changed = mergeIntoSoccer(cloud);
-    if (changed) { renderMatchList(); renderLiftChart(); renderLiftList(); }
+    if (changed) { renderMatchList(); renderGoalRanking(); renderLiftChart(); renderLiftList(); }
     showSyncBadge('✓');
   }).catch(function(){ showSyncBadge('?'); });
 }
@@ -1298,7 +1312,7 @@ function startSyncPolling() {
       var changed = mergeIntoSoccer(cloud);
       if (changed) {
         if (!document.activeElement || (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
-          renderMatchList(); renderLiftChart(); renderLiftList();
+          renderMatchList(); renderGoalRanking(); renderLiftChart(); renderLiftList();
         }
         showSyncBadge('✓');
       }
@@ -1313,7 +1327,7 @@ function switchTab(tab) {
   document.getElementById('page-' + tab).classList.add('active');
   event.currentTarget.classList.add('active');
   if (tab === 'lifting') { renderLiftChart(); renderLiftList(); }
-  if (tab === 'match')   renderMatchList();
+  if (tab === 'match')   { renderMatchList(); renderGoalRanking(); }
   if (tab === 'quiz')    initQuiz();
   if (tab === 'formation') initFormation();
 }
@@ -1487,6 +1501,7 @@ function saveMatch() {
   document.getElementById('match-score-us').value   = 0;
   document.getElementById('match-score-them').value = 0;
   renderMatchList();
+  renderGoalRanking();
   pushToCloud();
 }
 
@@ -1497,6 +1512,7 @@ function deleteMatch(id) {
   localStorage.setItem('matches', JSON.stringify(matches));
   _addDeleted(id);
   renderMatchList();
+  renderGoalRanking();
   pushToCloud();
 }
 
@@ -1537,6 +1553,7 @@ function updateMatch() {
   localStorage.setItem('matches', JSON.stringify(matches));
   document.getElementById('edit-modal').classList.remove('open');
   renderMatchList();
+  renderGoalRanking();
   pushToCloud();
 }
 
@@ -1549,6 +1566,42 @@ function makePlayerTags(names, type) {
     const icon = type === 'goal' ? '⚽' : '🎯';
     return `<span class="player-tag ${cls}">${icon} ${name}</span>`;
   }).join('');
+}
+
+function buildRanking(field) {
+  const matches = JSON.parse(localStorage.getItem('matches') || '[]');
+  const count = {};
+  matches.forEach(m => {
+    (m[field] || []).forEach(name => {
+      if (name.trim()) count[name.trim()] = (count[name.trim()] || 0) + 1;
+    });
+  });
+  return Object.entries(count).sort((a, b) => b[1] - a[1]);
+}
+
+function renderRankingList(ranking, elId) {
+  const el = document.getElementById(elId);
+  if (ranking.length === 0) { el.innerHTML = '<div style="color:var(--muted);font-size:13px">記録なし</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = ranking.map(([ name, cnt ], i) => {
+    const medal = i < 3 ? medals[i] : `${i+1}.`;
+    const size  = i === 0 ? '18px' : i < 3 ? '15px' : '13px';
+    const weight = i < 3 ? '700' : '400';
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:${size};font-weight:${weight}">
+      <span>${medal}</span>
+      <span style="flex:1">${name}</span>
+      <span style="color:var(--primary)">${cnt}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderGoalRanking() {
+  const goals   = buildRanking('goals');
+  const assists = buildRanking('assists');
+  const hasData = goals.length > 0 || assists.length > 0;
+  document.getElementById('ranking-card').style.display = hasData ? '' : 'none';
+  renderRankingList(goals,   'goal-ranking');
+  renderRankingList(assists, 'assist-ranking');
 }
 
 function renderMatchList() {
@@ -1581,6 +1634,7 @@ function renderMatchList() {
   }).join('');
 }
 renderMatchList();
+renderGoalRanking();
 startSyncPolling();
 
 function showToast(msg) {
