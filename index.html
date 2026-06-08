@@ -323,7 +323,8 @@
     }
     .player-btn.selected-goal   { border-color: var(--blue);  background: rgba(0,87,255,0.12); color: var(--blue); }
     .player-btn.selected-assist { border-color: var(--green); background: rgba(0,166,81,0.12); color: var(--green); }
-    .player-btn .player-count { display:inline-block; background:var(--blue); color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; line-height:16px; text-align:center; margin-left:3px; }
+    .player-btn .player-count { display:inline-block; background:var(--blue); color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; line-height:16px; text-align:center; margin-left:3px; pointer-events:none; }
+    .player-btn * { pointer-events:none; }
     .player-btn.selected-assist .player-count { background:var(--green); }
     .player-tag {
       display: inline-flex; align-items: center; gap: 4px;
