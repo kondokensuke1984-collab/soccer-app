@@ -313,6 +313,13 @@
     .match-score { font-size: 1.1rem; font-weight: 700; }
     .match-meta  { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
     .match-players { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .day-group { margin-bottom: 18px; }
+    .day-header {
+      font-size: 0.85rem; font-weight: 700; color: var(--muted);
+      padding: 6px 0 8px; border-bottom: 1px solid #eee; margin-bottom: 8px;
+      letter-spacing: 0.03em;
+    }
+    .day-note-section { margin-top: 10px; }
     .btn-note-upload {
       width:100%; padding:10px; border-radius:10px; border:2px dashed #ccc;
       background:#fafafa; color:#555; font-size:0.9rem; cursor:pointer;
@@ -931,12 +938,6 @@
         <label class="form-label">メモ</label>
         <textarea class="form-textarea" id="match-memo" rows="2" placeholder="今日の良かった点など…"></textarea>
       </div>
-      <div class="form-row">
-        <label class="form-label">📓 反省ノート（勇誠）</label>
-        <input type="file" accept="image/*" id="match-note" style="display:none" onchange="previewNote(this,'note-preview')">
-        <button type="button" class="btn-note-upload" onclick="document.getElementById('match-note').click()">📷 カメラ / ライブラリから選ぶ</button>
-        <img id="note-preview" style="display:none;width:100%;border-radius:10px;margin-top:8px;cursor:pointer" onclick="openNoteViewer(this.src)">
-      </div>
       <button class="btn-primary" onclick="saveMatch()">✅ 記録する</button>
     </div>
 
@@ -1003,12 +1004,6 @@
     <div class="form-row">
       <label class="form-label">メモ</label>
       <textarea class="form-textarea" id="edit-memo" rows="2"></textarea>
-    </div>
-    <div class="form-row">
-      <label class="form-label">📓 反省ノート（勇誠）</label>
-      <input type="file" accept="image/*" id="edit-note" style="display:none" onchange="previewNote(this,'edit-note-preview')">
-      <button type="button" class="btn-note-upload" onclick="document.getElementById('edit-note').click()">📷 カメラ / ライブラリから選ぶ</button>
-      <img id="edit-note-preview" style="display:none;width:100%;border-radius:10px;margin-top:8px;cursor:pointer" onclick="openNoteViewer(this.src)">
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
@@ -1239,16 +1234,18 @@ var _syncTimer = null;
 
 function _getSoccerData() {
   return {
-    matches:  JSON.parse(localStorage.getItem('matches')      || '[]'),
-    lifting:  JSON.parse(localStorage.getItem('lifting')      || '[]'),
-    deleted:  JSON.parse(localStorage.getItem('soccer_deleted')|| '[]')
+    matches:   JSON.parse(localStorage.getItem('matches')      || '[]'),
+    lifting:   JSON.parse(localStorage.getItem('lifting')      || '[]'),
+    deleted:   JSON.parse(localStorage.getItem('soccer_deleted')|| '[]'),
+    day_notes: JSON.parse(localStorage.getItem('day_notes')    || '{}')
   };
 }
 
 function _setSoccerData(d) {
-  if (d.matches !== undefined)  localStorage.setItem('matches',        JSON.stringify(d.matches));
-  if (d.lifting !== undefined)  localStorage.setItem('lifting',        JSON.stringify(d.lifting));
-  if (d.deleted !== undefined)  localStorage.setItem('soccer_deleted', JSON.stringify(d.deleted));
+  if (d.matches   !== undefined) localStorage.setItem('matches',        JSON.stringify(d.matches));
+  if (d.lifting   !== undefined) localStorage.setItem('lifting',        JSON.stringify(d.lifting));
+  if (d.deleted   !== undefined) localStorage.setItem('soccer_deleted', JSON.stringify(d.deleted));
+  if (d.day_notes !== undefined) localStorage.setItem('day_notes',      JSON.stringify(d.day_notes));
 }
 
 function _addDeleted(id) {
@@ -1276,6 +1273,12 @@ function mergeIntoSoccer(src) {
   var lids = {}; local.lifting.forEach(function(r){ lids[r.id]=1; });
   (src.lifting||[]).forEach(function(r){
     if (!lids[r.id] && !delSet[r.id]) { local.lifting.push(r); changed=true; }
+  });
+
+  // day_notes（クラウド側の日付ノートをローカルにマージ）
+  var srcNotes = src.day_notes || {};
+  Object.keys(srcNotes).forEach(function(date) {
+    if (!local.day_notes[date] && srcNotes[date]) { local.day_notes[date] = srcNotes[date]; changed=true; }
   });
 
   if (changed) _setSoccerData(local);
@@ -1549,18 +1552,6 @@ function previewNote(input, previewId) {
   });
 }
 
-function openNoteViewer(idOrSrc) {
-  let src = idOrSrc;
-  // IDとして渡された場合はmatchesから取得
-  if (!String(idOrSrc).startsWith('data:')) {
-    const matches = JSON.parse(localStorage.getItem('matches') || '[]');
-    const m = matches.find(m => m.id == idOrSrc);
-    if (m && m.note) src = m.note;
-  }
-  document.getElementById('note-viewer-img').src = src;
-  document.getElementById('note-viewer').style.display = 'flex';
-}
-
 function tapPlayer(btn, hiddenId, type) {
   var cnt = parseInt(btn.dataset.count || '0');
   cnt = cnt >= 5 ? 0 : cnt + 1;
@@ -1629,11 +1620,9 @@ function saveMatch() {
   const assists  = parseNames(document.getElementById('match-assists').value);
   const video    = document.getElementById('match-video').value.trim();
   const memo     = document.getElementById('match-memo').value.trim();
-  const noteEl   = document.getElementById('match-note');
-  const note     = noteEl.dataset.base64 || '';
   if (!opponent) { alert('相手チームを入力してください'); return; }
   const matches = JSON.parse(localStorage.getItem('matches') || '[]');
-  matches.unshift({ date, opponent, us, them, goals, assists, video, memo, note, id: Date.now() });
+  matches.unshift({ date, opponent, us, them, goals, assists, video, memo, id: Date.now() });
   localStorage.setItem('matches', JSON.stringify(matches));
   document.getElementById('match-opponent').value = '';
   document.getElementById('match-goals').value    = '';
@@ -1642,8 +1631,6 @@ function saveMatch() {
   document.getElementById('match-memo').value     = '';
   document.getElementById('match-score-us').value   = 0;
   document.getElementById('match-score-them').value = 0;
-  noteEl.value = ''; noteEl.dataset.base64 = '';
-  document.getElementById('note-preview').style.display = 'none';
   resetPlayerSelector('goal-selector',   'goal');
   resetPlayerSelector('assist-selector', 'assist');
   renderMatchList();
@@ -1675,11 +1662,6 @@ function openEditModal(id) {
   setPlayerSelector('edit-assist-selector', 'edit-assists', 'assist', m.assists || []);
   document.getElementById('edit-video').value       = m.video || '';
   document.getElementById('edit-memo').value        = m.memo || '';
-  const enp = document.getElementById('edit-note-preview');
-  const enEl = document.getElementById('edit-note');
-  enEl.value = ''; enEl.dataset.base64 = '';
-  if (m.note) { enp.src = m.note; enp.style.display = 'block'; }
-  else { enp.style.display = 'none'; }
   document.getElementById('edit-modal').classList.add('open');
 }
 
@@ -1698,11 +1680,9 @@ function updateMatch() {
   const assists = parseNames(document.getElementById('edit-assists').value);
   const video   = document.getElementById('edit-video').value.trim();
   const memo    = document.getElementById('edit-memo').value.trim();
-  const editNoteEl = document.getElementById('edit-note');
-  const newNote = editNoteEl.dataset.base64 || null;
   if (!opponent) { alert('相手チームを入力してください'); return; }
   let matches = JSON.parse(localStorage.getItem('matches') || '[]');
-  matches = matches.map(m => m.id === id ? { ...m, date, opponent, us, them, goals, assists, video, memo, note: newNote !== null ? newNote : (m.note || '') } : m);
+  matches = matches.map(m => m.id === id ? { ...m, date, opponent, us, them, goals, assists, video, memo } : m);
   localStorage.setItem('matches', JSON.stringify(matches));
   document.getElementById('edit-modal').classList.remove('open');
   renderMatchList();
@@ -1758,35 +1738,82 @@ function renderGoalRanking() {
 }
 
 function renderMatchList() {
-  const matches = JSON.parse(localStorage.getItem('matches') || '[]');
+  const matches  = JSON.parse(localStorage.getItem('matches')   || '[]');
+  const dayNotes = JSON.parse(localStorage.getItem('day_notes') || '{}');
   const el = document.getElementById('match-list');
   if (matches.length === 0) { el.innerHTML = '<div class="empty-state">まだ記録がありません</div>'; return; }
-  el.innerHTML = matches.map(m => {
-    const result = m.us > m.them ? 'win' : m.us < m.them ? 'lose' : 'draw';
-    const label  = result === 'win' ? '勝利' : result === 'lose' ? '敗北' : '引分';
-    const goalTags   = makePlayerTags(m.goals,   'goal');
-    const assistTags = makePlayerTags(m.assists, 'assist');
-    const hasTags = goalTags || assistTags;
-    const videoBtn = m.video ? `<button class="play-btn-sm" onclick="openVideo('${m.video}')">▶ 動画</button>` : '';
-    const aiBtn = `<button class="ai-advice-btn" onclick="openGemForMatch(${m.id})">🤖 AIに聞く</button>`;
-    const noteImg = m.note ? `<img src="${m.note}" style="width:100%;border-radius:8px;margin-top:8px;cursor:pointer" onclick="openNoteViewer('${m.id}')" alt="反省ノート">` : '';
-    return `<div class="match-item">
-      <div class="match-item-row">
-        <div class="match-result result-${result}">${label}</div>
-        <div class="match-info">
-          <div class="match-score">${m.us} - ${m.them} <span style="font-weight:400;color:var(--muted)">vs</span> ${m.opponent}</div>
-          <div class="match-meta">${m.date}${m.memo ? ' · ' + m.memo : ''}</div>
+
+  // 日付ごとにグループ化
+  const groups = {};
+  matches.forEach(m => {
+    if (!groups[m.date]) groups[m.date] = [];
+    groups[m.date].push(m);
+  });
+  const dates = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  el.innerHTML = dates.map(date => {
+    const ms = groups[date];
+    const note = dayNotes[date] || '';
+
+    const matchItems = ms.map(m => {
+      const result = m.us > m.them ? 'win' : m.us < m.them ? 'lose' : 'draw';
+      const label  = result === 'win' ? '勝利' : result === 'lose' ? '敗北' : '引分';
+      const goalTags   = makePlayerTags(m.goals,   'goal');
+      const assistTags = makePlayerTags(m.assists, 'assist');
+      const hasTags = goalTags || assistTags;
+      const videoBtn = m.video ? `<button class="play-btn-sm" onclick="openVideo('${m.video}')">▶ 動画</button>` : '';
+      const aiBtn = `<button class="ai-advice-btn" onclick="openGemForMatch(${m.id})">🤖 AIに聞く</button>`;
+      return `<div class="match-item">
+        <div class="match-item-row">
+          <div class="match-result result-${result}">${label}</div>
+          <div class="match-info">
+            <div class="match-score">${m.us} - ${m.them} <span style="font-weight:400;color:var(--muted)">vs</span> ${m.opponent}</div>
+            ${m.memo ? `<div class="match-meta">${m.memo}</div>` : ''}
+          </div>
+          <div class="match-actions">
+            <button class="match-edit" onclick="openEditModal(${m.id})">✏️</button>
+            <button class="match-delete" onclick="deleteMatch(${m.id})">🗑</button>
+          </div>
         </div>
-        <div class="match-actions">
-          <button class="match-edit" onclick="openEditModal(${m.id})">✏️</button>
-          <button class="match-delete" onclick="deleteMatch(${m.id})">🗑</button>
-        </div>
-      </div>
-      ${hasTags ? `<div class="match-players">${goalTags}${assistTags}</div>` : ''}
-      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${videoBtn}${aiBtn}</div>
-      ${noteImg}
+        ${hasTags ? `<div class="match-players">${goalTags}${assistTags}</div>` : ''}
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">${videoBtn}${aiBtn}</div>
+      </div>`;
+    }).join('');
+
+    const noteSection = `<div class="day-note-section">
+      <input type="file" accept="image/*" id="note-input-${date}" style="display:none" onchange="saveDayNote(this,'${date}')">
+      ${note
+        ? `<img src="${note}" style="width:100%;border-radius:8px;cursor:pointer;margin-bottom:6px" onclick="openNoteViewer('${date}')" alt="反省ノート">
+           <button class="btn-note-upload" style="font-size:12px;padding:6px" onclick="document.getElementById('note-input-${date}').click()">📷 写真を変更</button>`
+        : `<button class="btn-note-upload" onclick="document.getElementById('note-input-${date}').click()">📓 反省ノートを追加（カメラ / ライブラリ）</button>`
+      }
+    </div>`;
+
+    return `<div class="day-group">
+      <div class="day-header">${date}</div>
+      ${matchItems}
+      ${noteSection}
     </div>`;
   }).join('');
+}
+
+function saveDayNote(input, date) {
+  if (!input.files[0]) return;
+  compressImage(input.files[0], base64 => {
+    const notes = JSON.parse(localStorage.getItem('day_notes') || '{}');
+    notes[date] = base64;
+    localStorage.setItem('day_notes', JSON.stringify(notes));
+    renderMatchList();
+    pushToCloud();
+  });
+}
+
+function openNoteViewer(date) {
+  const notes = JSON.parse(localStorage.getItem('day_notes') || '{}');
+  const src = notes[date];
+  if (!src) return;
+  document.getElementById('note-viewer-img').src = src;
+  document.getElementById('note-viewer').style.display = 'flex';
 }
 initPlayerSelector('goal-selector',   'match-goals',   'goal');
 initPlayerSelector('assist-selector', 'match-assists', 'assist');
