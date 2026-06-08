@@ -323,6 +323,8 @@
     }
     .player-btn.selected-goal   { border-color: var(--blue);  background: rgba(0,87,255,0.12); color: var(--blue); }
     .player-btn.selected-assist { border-color: var(--green); background: rgba(0,166,81,0.12); color: var(--green); }
+    .player-btn .player-count { display:inline-block; background:var(--blue); color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; line-height:16px; text-align:center; margin-left:3px; }
+    .player-btn.selected-assist .player-count { background:var(--green); }
     .player-tag {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 9px; border-radius: 50px;
@@ -1496,29 +1498,46 @@ function initPlayerSelector(gridId, hiddenId, type) {
   var grid = document.getElementById(gridId);
   if (!grid) return;
   grid.innerHTML = PLAYERS.map(name =>
-    `<button type="button" class="player-btn" data-name="${name}" data-type="${type}" onclick="togglePlayer(this,'${hiddenId}','${type}')">${name}</button>`
+    `<button type="button" class="player-btn" data-name="${name}" data-count="0" onclick="tapPlayer(this,'${hiddenId}','${type}')">${name}</button>`
   ).join('');
 }
 
-function togglePlayer(btn, hiddenId, type) {
+function tapPlayer(btn, hiddenId, type) {
+  var cnt = parseInt(btn.dataset.count || '0');
+  cnt = cnt + 1;
+  btn.dataset.count = cnt;
   var cls = 'selected-' + type;
-  btn.classList.toggle(cls);
-  updateHidden(btn.closest('.form-row'), hiddenId, type);
+  btn.classList.add(cls);
+  btn.innerHTML = btn.dataset.name + (cnt > 1 ? ` <span class="player-count">${cnt}</span>` : '');
+  syncHidden(btn.closest('.player-select-grid'), hiddenId, type);
 }
 
-function updateHidden(formRow, hiddenId, type) {
-  var cls = 'selected-' + type;
-  var selected = [];
-  formRow.querySelectorAll('.player-btn.' + cls).forEach(b => selected.push(b.dataset.name));
-  document.getElementById(hiddenId).value = selected.join(',');
+function syncHidden(grid, hiddenId, type) {
+  var names = [];
+  grid.querySelectorAll('.player-btn').forEach(b => {
+    var cnt = parseInt(b.dataset.count || '0');
+    for (var i = 0; i < cnt; i++) names.push(b.dataset.name);
+  });
+  document.getElementById(hiddenId).value = names.join(',');
 }
 
 function setPlayerSelector(gridId, hiddenId, type, names) {
   var grid = document.getElementById(gridId);
   if (!grid) return;
+  // カウントを集計
+  var counts = {};
+  names.forEach(n => { counts[n] = (counts[n] || 0) + 1; });
   var cls = 'selected-' + type;
   grid.querySelectorAll('.player-btn').forEach(btn => {
-    btn.classList.toggle(cls, names.includes(btn.dataset.name));
+    var cnt = counts[btn.dataset.name] || 0;
+    btn.dataset.count = cnt;
+    if (cnt > 0) {
+      btn.classList.add(cls);
+      btn.innerHTML = btn.dataset.name + (cnt > 1 ? ` <span class="player-count">${cnt}</span>` : '');
+    } else {
+      btn.classList.remove(cls);
+      btn.innerHTML = btn.dataset.name;
+    }
   });
   document.getElementById(hiddenId).value = names.join(',');
 }
@@ -1526,7 +1545,11 @@ function setPlayerSelector(gridId, hiddenId, type, names) {
 function resetPlayerSelector(gridId, type) {
   var grid = document.getElementById(gridId);
   if (!grid) return;
-  grid.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('selected-' + type));
+  grid.querySelectorAll('.player-btn').forEach(btn => {
+    btn.dataset.count = '0';
+    btn.classList.remove('selected-' + type);
+    btn.innerHTML = btn.dataset.name;
+  });
 }
 
 function parseNames(str) {
