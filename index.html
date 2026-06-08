@@ -1504,11 +1504,16 @@ function initPlayerSelector(gridId, hiddenId, type) {
 
 function tapPlayer(btn, hiddenId, type) {
   var cnt = parseInt(btn.dataset.count || '0');
-  cnt = cnt + 1;
+  cnt = cnt >= 5 ? 0 : cnt + 1;
   btn.dataset.count = cnt;
   var cls = 'selected-' + type;
-  btn.classList.add(cls);
-  btn.innerHTML = btn.dataset.name + (cnt > 1 ? ` <span class="player-count">${cnt}</span>` : '');
+  if (cnt === 0) {
+    btn.classList.remove(cls);
+    btn.innerHTML = btn.dataset.name;
+  } else {
+    btn.classList.add(cls);
+    btn.innerHTML = btn.dataset.name + (cnt > 1 ? ` <span class="player-count">${cnt}</span>` : '');
+  }
   syncHidden(btn.closest('.player-select-grid'), hiddenId, type);
 }
 
