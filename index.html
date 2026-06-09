@@ -34,11 +34,12 @@
       position: fixed;
       bottom: 0; left: 0; right: 0;
       z-index: 100;
-      background: rgba(255,255,255,0.95);
-      backdrop-filter: blur(12px);
+      background: rgba(255,255,255,0.97);
       border-top: 1px solid rgba(0,0,0,0.08);
       display: flex;
       padding-bottom: env(safe-area-inset-bottom);
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     }
     .tab-btn {
       flex: 1;
