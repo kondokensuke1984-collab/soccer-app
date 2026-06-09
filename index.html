@@ -1317,8 +1317,10 @@ function mergeIntoSoccer(src) {
     if (mids[m.id] === undefined) {
       local.matches.unshift(m); changed=true;
     } else {
-      // 既存の試合データをクラウド版で上書き（ゴール数などの更新を反映）
-      if (JSON.stringify(local.matches[mids[m.id]]) !== JSON.stringify(m)) {
+      // updatedAt が新しい方を優先（なければクラウド版を採用）
+      var localM = local.matches[mids[m.id]];
+      var cloudNewer = (m.updatedAt || 0) > (localM.updatedAt || 0);
+      if (cloudNewer && JSON.stringify(localM) !== JSON.stringify(m)) {
         local.matches[mids[m.id]] = m; changed=true;
       }
     }
@@ -1679,7 +1681,7 @@ function saveMatch() {
   const memo     = document.getElementById('match-memo').value.trim();
   if (!opponent) { alert('相手チームを入力してください'); return; }
   const matches = JSON.parse(localStorage.getItem('matches') || '[]');
-  matches.unshift({ date, opponent, us, them, goals, assists, video, memo, id: Date.now() });
+  matches.unshift({ date, opponent, us, them, goals, assists, video, memo, id: Date.now(), updatedAt: Date.now() });
   localStorage.setItem('matches', JSON.stringify(matches));
   document.getElementById('match-opponent').value = '';
   document.getElementById('match-goals').value    = '';
@@ -1744,7 +1746,7 @@ function updateMatch() {
   const memo    = document.getElementById('edit-memo').value.trim();
   if (!opponent) { alert('相手チームを入力してください'); return; }
   let matches = JSON.parse(localStorage.getItem('matches') || '[]');
-  matches = matches.map(m => m.id === id ? { ...m, date, opponent, us, them, goals, assists, video, memo } : m);
+  matches = matches.map(m => m.id === id ? { ...m, date, opponent, us, them, goals, assists, video, memo, updatedAt: Date.now() } : m);
   localStorage.setItem('matches', JSON.stringify(matches));
   document.getElementById('edit-modal').classList.remove('open');
   renderMatchList();
