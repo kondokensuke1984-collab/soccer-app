@@ -1310,9 +1310,17 @@ function mergeIntoSoccer(src) {
 
   // matches
   local.matches = local.matches.filter(function(m){ return !delSet[m.id]; });
-  var mids = {}; local.matches.forEach(function(m){ mids[m.id]=1; });
+  var mids = {}; local.matches.forEach(function(m,i){ mids[m.id]=i; });
   (src.matches||[]).forEach(function(m){
-    if (!mids[m.id] && !delSet[m.id]) { local.matches.unshift(m); changed=true; }
+    if (delSet[m.id]) return;
+    if (mids[m.id] === undefined) {
+      local.matches.unshift(m); changed=true;
+    } else {
+      // 既存の試合データをクラウド版で上書き（ゴール数などの更新を反映）
+      if (JSON.stringify(local.matches[mids[m.id]]) !== JSON.stringify(m)) {
+        local.matches[mids[m.id]] = m; changed=true;
+      }
+    }
   });
   local.matches.sort(function(a,b){ return b.id - a.id; });
 
