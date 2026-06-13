@@ -1967,7 +1967,8 @@ function renderMatchList() {
              </div>` : ''}
            </div>`
         : `<div class="video-url-input-row" style="display:none" id="day-videos-${date}">
-             <input class="form-input" id="video-url-${date}" type="url" inputmode="url" placeholder="YouTube / Googleフォト URLを貼り付け">
+             <input class="form-input" id="video-url-${date}" type="url" inputmode="url" placeholder="URLを貼り付け">
+             <button class="btn-add-video" onclick="window.open('https://photos.google.com','_blank')" style="background:#4285f4">📸</button>
              <button class="btn-add-video" onclick="addDayVideo('${date}')">追加</button>
            </div>
            <button class="btn-video-toggle" onclick="toggleDayVideos('${date}',this)">🎬 ベストシーンを追加</button>`
