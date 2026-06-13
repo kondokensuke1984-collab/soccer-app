@@ -2005,6 +2005,9 @@ function addDayVideo(date) {
   allVideos[date] = videos;
   localStorage.setItem('day_videos', JSON.stringify(allVideos));
   renderMatchList();
+  // 追加後もパネルを開いたままにする
+  const panel = document.getElementById('day-videos-' + date);
+  if (panel) panel.style.display = 'block';
   pushToCloud();
 }
 
@@ -2017,6 +2020,8 @@ function removeDayVideo(date, idx) {
   else allVideos[date] = videos;
   localStorage.setItem('day_videos', JSON.stringify(allVideos));
   renderMatchList();
+  const panel = document.getElementById('day-videos-' + date);
+  if (panel) panel.style.display = 'block';
   pushToCloud();
 }
 
