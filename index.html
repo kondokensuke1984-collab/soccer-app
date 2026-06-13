@@ -1944,10 +1944,13 @@ function renderMatchList() {
 
     const thumbs = videos.map((url, i) => {
       const vid = getYouTubeId(url);
-      if (!vid) return '';
+      const isGP = isGooglePhotos(url);
+      if (!vid && !isGP) return '';
+      const inner = vid
+        ? `<img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="ベストシーン${i+1}"><div class="play-overlay">▶</div>`
+        : `<div style="width:100%;height:100%;background:#e8f0fe;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><span style="font-size:1.6rem">📸</span><span style="font-size:0.7rem;color:#555">Googleフォト</span></div>`;
       return `<div class="day-video-thumb" onclick="openVideo('${url}')">
-        <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="ベストシーン${i+1}">
-        <div class="play-overlay">▶</div>
+        ${inner}
         <button class="del-btn" onclick="event.stopPropagation();removeDayVideo('${date}',${i})">✕</button>
       </div>`;
     }).join('');
@@ -1992,7 +1995,7 @@ function toggleDayVideos(date, btn) {
 function addDayVideo(date) {
   const input = document.getElementById('video-url-' + date);
   const url = input.value.trim();
-  if (!url || !getYouTubeId(url)) { alert('YouTubeのURLを入力してください'); return; }
+  if (!url || (!getYouTubeId(url) && !isGooglePhotos(url))) { alert('YouTubeまたはGoogleフォトのURLを入力してください'); return; }
   const allVideos = JSON.parse(localStorage.getItem('day_videos') || '{}');
   const videos = allVideos[date] || [];
   if (videos.length >= 3) { alert('1日3本まで追加できます'); return; }
