@@ -326,6 +326,33 @@
       letter-spacing: 0.03em;
     }
     .day-note-section { margin-top: 10px; }
+    .day-video-section { margin-top: 6px; }
+    .btn-video-toggle {
+      background: none; border: none; color: var(--muted); font-size: 0.82rem;
+      cursor: pointer; padding: 4px 0; text-decoration: underline; margin-right: 8px;
+    }
+    .day-video-panel { margin-top: 8px; }
+    .day-video-thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .day-video-thumb {
+      position: relative; width: calc(33.33% - 6px); aspect-ratio: 16/9;
+      border-radius: 8px; overflow: hidden; background: #000; cursor: pointer;
+    }
+    .day-video-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .day-video-thumb .play-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.25); font-size: 1.6rem;
+    }
+    .day-video-thumb .del-btn {
+      position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.6);
+      color: #fff; border: none; border-radius: 50%; width: 22px; height: 22px;
+      font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .video-url-input-row { display: flex; gap: 6px; margin-top: 6px; }
+    .video-url-input-row .form-input { flex: 1; font-size: 0.85rem; padding: 8px 10px; }
+    .video-url-input-row .btn-add-video {
+      padding: 8px 12px; background: var(--blue); color: #fff; border: none;
+      border-radius: 10px; font-size: 0.85rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
     .btn-add-match {
       width:100%; padding:14px; border-radius:12px; border:2px dashed #bbd0ff;
       background:#f0f4ff; font-size:1rem; font-weight:700; color:var(--blue);
@@ -1283,18 +1310,20 @@ var _syncTimer = null;
 
 function _getSoccerData() {
   return {
-    matches:   JSON.parse(localStorage.getItem('matches')      || '[]'),
-    lifting:   JSON.parse(localStorage.getItem('lifting')      || '[]'),
-    deleted:   JSON.parse(localStorage.getItem('soccer_deleted')|| '[]'),
-    day_notes: JSON.parse(localStorage.getItem('day_notes')    || '{}')
+    matches:    JSON.parse(localStorage.getItem('matches')       || '[]'),
+    lifting:    JSON.parse(localStorage.getItem('lifting')       || '[]'),
+    deleted:    JSON.parse(localStorage.getItem('soccer_deleted')|| '[]'),
+    day_notes:  JSON.parse(localStorage.getItem('day_notes')     || '{}'),
+    day_videos: JSON.parse(localStorage.getItem('day_videos')    || '{}')
   };
 }
 
 function _setSoccerData(d) {
-  if (d.matches   !== undefined) localStorage.setItem('matches',        JSON.stringify(d.matches));
-  if (d.lifting   !== undefined) localStorage.setItem('lifting',        JSON.stringify(d.lifting));
-  if (d.deleted   !== undefined) localStorage.setItem('soccer_deleted', JSON.stringify(d.deleted));
-  if (d.day_notes !== undefined) localStorage.setItem('day_notes',      JSON.stringify(d.day_notes));
+  if (d.matches    !== undefined) localStorage.setItem('matches',        JSON.stringify(d.matches));
+  if (d.lifting    !== undefined) localStorage.setItem('lifting',        JSON.stringify(d.lifting));
+  if (d.deleted    !== undefined) localStorage.setItem('soccer_deleted', JSON.stringify(d.deleted));
+  if (d.day_notes  !== undefined) localStorage.setItem('day_notes',      JSON.stringify(d.day_notes));
+  if (d.day_videos !== undefined) localStorage.setItem('day_videos',     JSON.stringify(d.day_videos));
 }
 
 function _addDeleted(id) {
@@ -1334,10 +1363,19 @@ function mergeIntoSoccer(src) {
     if (!lids[r.id] && !delSet[r.id]) { local.lifting.push(r); changed=true; }
   });
 
-  // day_notes（クラウド側の日付ノートをローカルにマージ）
+  // day_notes
   var srcNotes = src.day_notes || {};
   Object.keys(srcNotes).forEach(function(date) {
     if (!local.day_notes[date] && srcNotes[date]) { local.day_notes[date] = srcNotes[date]; changed=true; }
+  });
+
+  // day_videos
+  var srcVideos = src.day_videos || {};
+  Object.keys(srcVideos).forEach(function(date) {
+    var sv = srcVideos[date];
+    if (!local.day_videos[date] || JSON.stringify(local.day_videos[date]) !== JSON.stringify(sv)) {
+      local.day_videos[date] = sv; changed=true;
+    }
   });
 
   if (changed) _setSoccerData(local);
@@ -1849,7 +1887,8 @@ function jumpToDate(dateStr) {
 
 function renderMatchList() {
   const matches  = JSON.parse(localStorage.getItem('matches')   || '[]');
-  const dayNotes = JSON.parse(localStorage.getItem('day_notes') || '{}');
+  const dayNotes  = JSON.parse(localStorage.getItem('day_notes')  || '{}');
+  const dayVideos = JSON.parse(localStorage.getItem('day_videos') || '{}');
   const el = document.getElementById('match-list');
   if (matches.length === 0) { el.innerHTML = '<div class="empty-state">まだ記録がありません</div>'; return; }
 
@@ -1863,7 +1902,8 @@ function renderMatchList() {
 
   el.innerHTML = dates.map(date => {
     const ms = groups[date];
-    const note = dayNotes[date] || '';
+    const note   = dayNotes[date]  || '';
+    const videos = dayVideos[date] || [];
 
     const matchItems = ms.map(m => {
       const result = m.us > m.them ? 'win' : m.us < m.them ? 'lose' : 'draw';
@@ -1902,12 +1942,77 @@ function renderMatchList() {
       }
     </div>`;
 
+    const thumbs = videos.map((url, i) => {
+      const vid = getYouTubeId(url);
+      if (!vid) return '';
+      return `<div class="day-video-thumb" onclick="openVideo('${url}')">
+        <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt="ベストシーン${i+1}">
+        <div class="play-overlay">▶</div>
+        <button class="del-btn" onclick="event.stopPropagation();removeDayVideo('${date}',${i})">✕</button>
+      </div>`;
+    }).join('');
+
+    const videoSection = `<div class="day-video-section">
+      ${videos.length > 0
+        ? `<button class="btn-video-toggle" onclick="toggleDayVideos('${date}',this)">🎬 ベストシーンを見る</button>
+           <div id="day-videos-${date}" style="display:none">
+             <div class="day-video-thumbs">${thumbs}</div>
+             ${videos.length < 3 ? `<div class="video-url-input-row">
+               <input class="form-input" id="video-url-${date}" type="url" inputmode="url" placeholder="YouTube URLを貼り付け">
+               <button class="btn-add-video" onclick="addDayVideo('${date}')">追加</button>
+             </div>` : ''}
+           </div>`
+        : `<div class="video-url-input-row" style="display:none" id="day-videos-${date}">
+             <input class="form-input" id="video-url-${date}" type="url" inputmode="url" placeholder="YouTube URLを貼り付け">
+             <button class="btn-add-video" onclick="addDayVideo('${date}')">追加</button>
+           </div>
+           <button class="btn-video-toggle" onclick="toggleDayVideos('${date}',this)">🎬 ベストシーンを追加</button>`
+      }
+    </div>`;
+
     return `<div class="day-group" data-date="${date}">
       <div class="day-header">${date}</div>
       ${matchItems}
+      ${videoSection}
       ${noteSection}
     </div>`;
   }).join('');
+}
+
+function toggleDayVideos(date, btn) {
+  const el = document.getElementById('day-videos-' + date);
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  const videos = JSON.parse(localStorage.getItem('day_videos') || '{}')[date] || [];
+  btn.textContent = open
+    ? (videos.length > 0 ? '🎬 ベストシーンを閉じる' : '🎬 ベストシーンを閉じる')
+    : (videos.length > 0 ? '🎬 ベストシーンを見る' : '🎬 ベストシーンを追加');
+}
+
+function addDayVideo(date) {
+  const input = document.getElementById('video-url-' + date);
+  const url = input.value.trim();
+  if (!url || !getYouTubeId(url)) { alert('YouTubeのURLを入力してください'); return; }
+  const allVideos = JSON.parse(localStorage.getItem('day_videos') || '{}');
+  const videos = allVideos[date] || [];
+  if (videos.length >= 3) { alert('1日3本まで追加できます'); return; }
+  videos.push(url);
+  allVideos[date] = videos;
+  localStorage.setItem('day_videos', JSON.stringify(allVideos));
+  renderMatchList();
+  pushToCloud();
+}
+
+function removeDayVideo(date, idx) {
+  if (!confirm('この動画を削除しますか？')) return;
+  const allVideos = JSON.parse(localStorage.getItem('day_videos') || '{}');
+  const videos = allVideos[date] || [];
+  videos.splice(idx, 1);
+  if (videos.length === 0) delete allVideos[date];
+  else allVideos[date] = videos;
+  localStorage.setItem('day_videos', JSON.stringify(allVideos));
+  renderMatchList();
+  pushToCloud();
 }
 
 function toggleDayNote(date, btn) {
